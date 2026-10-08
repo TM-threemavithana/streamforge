@@ -11,4 +11,5 @@ import (
 // in one database transaction before returning DATABASE_COMMITTED.
 type EventRepository interface {
 	ProcessEvent(ctx context.Context, event domain.TripEvent) (domain.EventResult, error)
+	ReportSourceRejection(ctx context.Context, rejection domain.SourceRejection) (domain.EventResult, error)
 }

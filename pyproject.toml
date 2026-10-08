@@ -7,16 +7,27 @@ name = "streamforge-replay"
 version = "0.1.0"
 description = "Bounded NYC TLC Parquet adapter for StreamForge 2.0"
 requires-python = ">=3.11"
-dependencies = ["pyarrow>=15,<25"]
+dependencies = [
+    "grpcio==1.81.1",
+    "protobuf==5.29.6",
+    "pyarrow>=15,<25",
+]
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<10"]
+dev = [
+    "grpcio-tools==1.70.0",
+    "pytest>=8,<10",
+]
 
 [project.scripts]
 streamforge-inspect = "streamforge_replay.cli:main"
+streamforge-replay = "streamforge_replay.replay_cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["tools/replay-python/src/streamforge_replay"]
+packages = [
+    "tools/replay-python/src/streamforge",
+    "tools/replay-python/src/streamforge_replay",
+]
 
 [tool.pytest.ini_options]
 addopts = "-q"

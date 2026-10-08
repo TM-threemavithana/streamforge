@@ -6,6 +6,7 @@ import pytest
 
 from streamforge_replay.adapter import inspect_parquet, iter_normalized
 from streamforge_replay.model import CanonicalTrip
+from streamforge_replay.identity import event_id, file_sha256
 
 
 def write_fixture(path):
@@ -40,4 +41,18 @@ def test_missing_required_column_fails_once_at_file_level(tmp_path):
     pq.write_table(pa.table({"PULocationID": [1]}), path)
     with pytest.raises(ValueError, match="missing columns"):
         list(iter_normalized(path, frozenset({1}), batch_size=10))
+
+
+def test_replay_uses_stable_snapshot_when_source_path_changes(tmp_path):
+    path = tmp_path / "fixture.parquet"
+    write_fixture(path)
+    expected_sha = file_sha256(path)
+    outcomes = iter_normalized(path, frozenset({1, 2}), batch_size=1)
+    first = next(outcomes)
+    path.write_bytes(b"replacement")
+    remaining = list(outcomes)
+    assert first.source_sha256 == expected_sha
+    assert [first.event_id, *(item.event_id for item in remaining)] == [
+        event_id(expected_sha, row_number) for row_number in range(3)
+    ]
 

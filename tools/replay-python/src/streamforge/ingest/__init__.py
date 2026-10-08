@@ -1,0 +1,1 @@
+"""StreamForge ingestion protocol namespace."""

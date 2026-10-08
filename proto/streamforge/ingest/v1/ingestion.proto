@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package streamforge.ingest.v1;
+
+option go_package = "github.com/example/streamforge/services/core-go/gen/streamforge/ingest/v1;ingestv1";
+
+import "google/protobuf/timestamp.proto";
+
+service TripIngestionService {
+  rpc IngestBatch(IngestBatchRequest) returns (IngestBatchResponse);
+  rpc ReportSourceRejections(SourceRejectionsRequest) returns (SourceRejectionsResponse);
+}
+
+message TripEvent {
+  string event_id = 1;
+  string dataset_id = 2;
+  string run_id = 3;
+  string source_sha256 = 4;
+  uint64 source_row_number = 5;
+  google.protobuf.Timestamp pickup_at = 6;
+  google.protobuf.Timestamp dropoff_at = 7;
+  int32 pickup_zone_id = 8;
+  optional int32 dropoff_zone_id = 9;
+  int64 distance_milli_miles = 10;
+  optional int64 fare_cents = 11;
+}
+
+message IngestBatchRequest {
+  string request_id = 1;
+  repeated TripEvent events = 2;
+}
+
+message IngestBatchResponse {
+  string request_id = 1;
+  repeated EventResult results = 2;
+}
+
+message SourceRejection {
+  string event_id = 1;
+  string dataset_id = 2;
+  string run_id = 3;
+  uint64 source_row_number = 4;
+  string reason_code = 5;
+  string detail = 6;
+  string validation_policy_version = 7;
+}
+
+message SourceRejectionsRequest {
+  string request_id = 1;
+  repeated SourceRejection rejections = 2;
+}
+
+message SourceRejectionsResponse {
+  string request_id = 1;
+  repeated EventResult results = 2;
+}
+
+message EventResult {
+  string event_id = 1;
+  Outcome outcome = 2;
+  AckStage ack_stage = 3;
+  string reason_code = 4;
+}
+
+enum Outcome {
+  OUTCOME_UNSPECIFIED = 0;
+  OUTCOME_ACCEPTED = 1;
+  OUTCOME_DUPLICATE = 2;
+  OUTCOME_REJECTED = 3;
+}
+
+enum AckStage {
+  ACK_STAGE_UNSPECIFIED = 0;
+  ACK_STAGE_DATABASE_COMMITTED = 1;
+  ACK_STAGE_KAFKA_PUBLISHED = 2;
+}

@@ -2,15 +2,20 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
+from typing import BinaryIO
 
 IDENTITY_PREFIX = "nyc-yellow:v1"
 
 
 def file_sha256(path: str | Path, chunk_size: int = 1024 * 1024) -> str:
-    digest = hashlib.sha256()
     with Path(path).open("rb") as source:
-        for chunk in iter(lambda: source.read(chunk_size), b""):
-            digest.update(chunk)
+        return stream_sha256(source, chunk_size)
+
+
+def stream_sha256(source: BinaryIO, chunk_size: int = 1024 * 1024) -> str:
+    digest = hashlib.sha256()
+    for chunk in iter(lambda: source.read(chunk_size), b""):
+        digest.update(chunk)
     return digest.hexdigest()
 
 
