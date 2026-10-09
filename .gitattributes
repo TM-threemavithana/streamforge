@@ -1,0 +1,2 @@
+# Ensure reference lookup CSV preserves CRLF line endings across all platforms
+data/reference/taxi_zone_lookup.csv text eol=crlf

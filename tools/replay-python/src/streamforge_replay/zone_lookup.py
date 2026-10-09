@@ -6,6 +6,8 @@ from pathlib import Path
 from .identity import file_sha256
 
 PINNED_ZONE_LOOKUP_SHA256 = "1a99e105092230f8620f301edcca7f80d3080642ff404d28ed957d3fa222c8ed"
+PINNED_ZONE_LOOKUP_SHA256_LF = "5e8f5ff10175d75f468c6fbdf0f68ca93e77ecd48942718d5403f8b7232e90b0"
+VALID_ZONE_LOOKUP_SHA256S = frozenset({PINNED_ZONE_LOOKUP_SHA256, PINNED_ZONE_LOOKUP_SHA256_LF})
 DEFAULT_ZONE_LOOKUP = Path(__file__).resolve().parents[4] / "data" / "reference" / "taxi_zone_lookup.csv"
 REQUIRED_HEADERS = frozenset({"LocationID", "Borough", "Zone", "service_zone"})
 
@@ -17,7 +19,12 @@ def load_approved_zones(
 ) -> frozenset[int]:
     lookup = Path(path)
     actual_sha256 = file_sha256(lookup)
-    if actual_sha256 != expected_sha256:
+    if expected_sha256 == PINNED_ZONE_LOOKUP_SHA256:
+        if actual_sha256 not in VALID_ZONE_LOOKUP_SHA256S:
+            raise ValueError(
+                f"taxi-zone lookup checksum mismatch: expected {expected_sha256}, got {actual_sha256}"
+            )
+    elif actual_sha256 != expected_sha256:
         raise ValueError(
             f"taxi-zone lookup checksum mismatch: expected {expected_sha256}, got {actual_sha256}"
         )
