@@ -11,31 +11,6 @@ import org.hibernate.type.SqlTypes;
 import java.io.Serializable;
 import java.time.ZonedDateTime;
 import java.util.Map;
-import java.util.Objects;
-
-class AlertRuleId implements Serializable {
-    private String ruleId;
-    private Integer ruleVersion;
-    
-    // getters, setters, equals, hashcode
-    public AlertRuleId() {}
-    public AlertRuleId(String ruleId, Integer ruleVersion) {
-        this.ruleId = ruleId;
-        this.ruleVersion = ruleVersion;
-    }
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        AlertRuleId that = (AlertRuleId) o;
-        return Objects.equals(ruleId, that.ruleId) && Objects.equals(ruleVersion, that.ruleVersion);
-    }
-    @Override
-    public int hashCode() {
-        return Objects.hash(ruleId, ruleVersion);
-    }
-}
-
 @Entity
 @Table(name = "alert_rules")
 @IdClass(AlertRuleId.class)

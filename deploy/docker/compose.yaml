@@ -15,6 +15,7 @@ services:
     volumes:
       - streamforge-postgres:/var/lib/postgresql/data
       - ../../db/migrations:/docker-entrypoint-initdb.d:ro
+      - ./init-alerts-db.sh:/docker-entrypoint-initdb.d/999_alerts_db.sh:ro
 
   kafka:
     image: apache/kafka:4.2.2
@@ -66,7 +67,30 @@ services:
       - --config
       - retention.ms=604800000
 
+  alerts-java:
+    build:
+      context: ../../services/alerts-java
+      dockerfile: Dockerfile
+    environment:
+      STREAMFORGE_ALERTS_DATABASE_URL: jdbc:postgresql://postgres:5432/streamforge_alerts
+      STREAMFORGE_ALERTS_DATABASE_USER: streamforge
+      STREAMFORGE_ALERTS_DATABASE_PASSWORD: local-development-only
+      STREAMFORGE_KAFKA_BROKERS: kafka:19092
+      STREAMFORGE_KAFKA_TOPIC: streamforge.raw-events.v1
+      STREAMFORGE_ALERTS_PORT: 8081
+    ports:
+      - "127.0.0.1:${STREAMFORGE_ALERTS_PORT:-8081}:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8081/health/live || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
 volumes:
   streamforge-postgres:
   streamforge-kafka:
-

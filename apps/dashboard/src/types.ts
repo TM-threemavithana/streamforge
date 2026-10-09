@@ -94,3 +94,29 @@ export interface ApiProblem {
   message?: string;
   request_id?: string;
 }
+
+export interface AlertRule {
+  ruleId: string;
+  ruleVersion: number;
+  kind: string;
+  parameters: Record<string, unknown>;
+  enabled: boolean;
+  createdAt: string;
+}
+
+export interface Alert {
+  alertId: string;
+  eventId: string;
+  ruleId: string;
+  ruleVersion: number;
+  datasetId: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface AlertPage {
+  items: Alert[];
+  page: number;
+  limit: number;
+  total: number;
+}

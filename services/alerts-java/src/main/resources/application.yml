@@ -1,3 +1,6 @@
+server:
+  port: ${STREAMFORGE_ALERTS_PORT:8081}
+
 spring:
   application:
     name: alerts-java

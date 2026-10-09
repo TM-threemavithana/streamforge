@@ -32,8 +32,8 @@ Do not commit the TLC Parquet file. Record its locally measured checksum and too
 2. Phase 2 complete: modular Go domain/application layer, pgx/PostgreSQL migrations, transaction idempotency, rollback, and concurrency tests.
 3. Phase 3 complete: versioned Protobuf/gRPC ingestion, bounded retries, response-loss recovery, sanitized failures, and loopback-only exposure.
 4. Phase 4 complete: REST datasets/runs/analytics/quality APIs, read-only React/TypeScript dashboard, and reconciled 100-row demo.
-5. Phase 5 complete: Kafka Compose topology, topic/key strategy, broker acknowledgment, analytics consumer, durable poison-message handling, broker-derived lag observability, and automated crash/restart evidence.
-6. Add the independent Java rules service, Kubernetes/Helm, observability, security, and performance evidence only in their planned stages.
+6. Phase 6 complete: independent Spring Boot Java alerts service, versioned rule engine, Kafka stream consumption, isolated PostgreSQL schema, dual idempotency, REST APIs, and React dashboard integration.
+7. Add Kubernetes/Helm, observability, security, and performance evidence in subsequent planned stages.
 
 ## Phase 2 status
 
@@ -135,7 +135,40 @@ npm install
 npm run dev
 ```
 
-The Vite development server listens on `127.0.0.1:4173` and proxies `/api` and `/health` to the local core service on `127.0.0.1:8080`. Set `VITE_STREAMFORGE_API_BASE` for a different same-origin or CORS-enabled API base.
+The Vite development server listens on `127.0.0.1:4173` and proxies `/api` and `/health` to the local core service on `127.0.0.1:8080`, and `/api/v1/alerts-service` to the Java alerts service on `127.0.0.1:8081`. Set `VITE_STREAMFORGE_API_BASE` for a different same-origin or CORS-enabled API base.
+
+## Phase 6 Java Alerts Service status
+
+The Java service in `services/alerts-java` provides an independent rule-based anomaly detection engine running on Spring Boot 4.1.1 (Java 17, Spring Data JPA, Spring Kafka). It subscribes to `streamforge.raw-events.v1` under consumer group `streamforge-alerts-v1` with manual acknowledgement (`ack-mode: MANUAL`).
+
+Alerts and rules are persisted to an isolated PostgreSQL database (`streamforge_alerts`). The service guarantees idempotency at two boundaries:
+- **Offset level**: `alert_event_outcomes` tracks each processed Kafka offset atomically with generated alerts.
+- **Content level**: `alert_id` is deterministically computed as `SHA-256(event_id + "|" + rule_id + "|" + rule_version)`.
+
+REST endpoints exposed on `127.0.0.1:8081`:
+- `GET /api/v1/alerts-service/rules` and `GET /api/v1/alerts-service/rules/{ruleId}`
+- `POST /api/v1/alerts-service/rules` (with 409 Conflict protection on existing versions)
+- `PATCH /api/v1/alerts-service/rules/{ruleId}/status`
+- `GET /api/v1/alerts-service/alerts?dataset_id=...&rule_id=...&page=0&limit=50`
+- `GET /health/live` and `GET /health/ready`
+
+Run the alerts service locally:
+
+```powershell
+cd services\alerts-java
+$env:STREAMFORGE_ALERTS_DATABASE_URL='jdbc:postgresql://127.0.0.1:5433/streamforge_alerts'
+$env:STREAMFORGE_ALERTS_DATABASE_USER='streamforge'
+$env:STREAMFORGE_ALERTS_DATABASE_PASSWORD='local-development-only'
+$env:STREAMFORGE_KAFKA_BROKERS='127.0.0.1:29092'
+.\mvnw.cmd spring-boot:run
+```
+
+Run Java test suite (13 tests including Testcontainers PostgreSQL and EmbeddedKafka):
+
+```powershell
+cd services\alerts-java
+.\mvnw.cmd test
+```
 
 ## Verified official source and complete demo
 

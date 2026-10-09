@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ApiError, getAnalytics, getKafkaLag, getRejections, getRuns, listDatasets } from "./api";
-import type { Dataset, HourlyZoneStat, KafkaLagStatus, RejectionRecord, ReplayRun } from "./types";
+import { ApiError, getAnalytics, getKafkaLag, getRejections, getRuns, listDatasets, getAlertRules, getAlerts, toggleAlertRule } from "./api";
+import type { Dataset, HourlyZoneStat, KafkaLagStatus, RejectionRecord, ReplayRun, Alert, AlertRule, AlertPage } from "./types";
 
 const JAN_START = "2024-01-01T00:00";
 const FEB_START = "2024-02-01T00:00";
@@ -131,6 +131,9 @@ export function App() {
   const [rejections, setRejections] = useState<RejectionRecord[]>([]);
   const [runs, setRuns] = useState<ReplayRun[]>([]);
   const [kafkaLag, setKafkaLag] = useState<KafkaLagStatus>({ enabled: false, available: false });
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [alertsTotal, setAlertsTotal] = useState<number>(0);
+  const [alertRules, setAlertRules] = useState<AlertRule[]>([]);
   const [rejectionCursor, setRejectionCursor] = useState<string | null>(null);
   const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([]);
   const [datasetComplete, setDatasetComplete] = useState(false);
@@ -170,14 +173,19 @@ export function App() {
           if (reason instanceof DOMException && reason.name === "AbortError") throw reason;
           return { enabled: true, available: false } satisfies KafkaLagStatus;
         }),
+        getAlertRules(controller.signal).catch(() => [] as AlertRule[]),
+        getAlerts(datasetId, undefined, 0, 25, controller.signal).catch(() => ({ items: [], page: 0, limit: 25, total: 0 } as AlertPage)),
       ])
-        .then(([analytics, rejectionPage, runPage, lagStatus]) => {
+        .then(([analytics, rejectionPage, runPage, lagStatus, rulesData, alertsData]) => {
           setRows(analytics.items);
           setDatasetComplete(analytics.dataset_complete);
           setRejections(rejectionPage.items);
           setRejectionCursor(rejectionPage.next_cursor);
           setRuns(runPage.items);
           setKafkaLag(lagStatus);
+          setAlertRules(rulesData);
+          setAlerts(alertsData.items);
+          setAlertsTotal(alertsData.total);
         })
         .catch((reason) => {
           if (reason instanceof DOMException && reason.name === "AbortError") return;
@@ -188,6 +196,19 @@ export function App() {
     },
     [datasetId, filters],
   );
+
+  const handleToggleRule = async (ruleId: string, version: number, currentEnabled: boolean) => {
+    try {
+      await toggleAlertRule(ruleId, version, !currentEnabled);
+      setAlertRules((prev) =>
+        prev.map((r) =>
+          r.ruleId === ruleId && r.ruleVersion === version ? { ...r, enabled: !currentEnabled } : r
+        )
+      );
+    } catch (e) {
+      console.error("Failed to toggle rule", e);
+    }
+  };
 
   useEffect(() => {
     setCursorHistory([]);
@@ -236,7 +257,8 @@ export function App() {
         <nav aria-label="Primary navigation">
           <a className="nav-link active" href="#overview"><span>01</span>Overview</a>
           <a className="nav-link" href="#quality"><span>02</span>Data quality</a>
-          <a className="nav-link" href="#provenance"><span>03</span>Provenance</a>
+          <a className="nav-link" href="#alerts"><span>03</span>Alerts & Rules</a>
+          <a className="nav-link" href="#provenance"><span>04</span>Provenance</a>
         </nav>
         <div className="sidebar-note">
           <span className="pulse" />
@@ -337,6 +359,61 @@ export function App() {
                 <tbody>{rejections.map((record) => <tr key={`${record.event_id}-${record.validation_policy_version}`}><td>#{record.source_row_number.toLocaleString()}</td><td><span className="reason-token">{record.reason_code}</span></td><td className="detail-cell">{record.detail}</td><td>{record.validation_policy_version}</td><td>{formatUtc(record.rejected_at)}</td></tr>)}</tbody>
               </table>{rejections.length === 0 ? <p className="table-empty">No source rejections recorded for this dataset.</p> : null}</div>
               <div className="pagination"><button className="button secondary" disabled={cursorHistory.length === 0 || viewLoading} onClick={previousRejections}>Previous</button><span>Page {cursorHistory.length + 1}</span><button className="button secondary" disabled={!rejectionCursor || viewLoading} onClick={nextRejections}>Next</button></div>
+            </section>
+
+            <section id="alerts" className="panel table-panel">
+              <div className="panel-heading">
+                <div>
+                  <p className="eyebrow">Rule-based anomaly detection</p>
+                  <h2>Java Alerts Service</h2>
+                </div>
+                <span className="range-label">{alertRules.length} rules defined · {alertsTotal} anomaly alerts</span>
+              </div>
+              <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--line)", background: "#0e1316" }}>
+                <h3 style={{ fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted)", margin: "0 0 10px" }}>Configured Rules</h3>
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                  {alertRules.map((rule) => (
+                    <div key={`${rule.ruleId}-v${rule.ruleVersion}`} style={{ border: "1px solid var(--line)", padding: "8px 12px", background: "var(--panel)", display: "flex", alignItems: "center", gap: "12px" }}>
+                      <div>
+                        <span style={{ fontFamily: "DM Mono", fontSize: "0.75rem", color: "var(--ink)", fontWeight: 600 }}>{rule.ruleId}</span>
+                        <span style={{ fontSize: "0.68rem", color: "var(--muted)", marginLeft: "6px" }}>v{rule.ruleVersion} ({rule.kind})</span>
+                      </div>
+                      <button
+                        className="button secondary button-toggle"
+                        onClick={() => handleToggleRule(rule.ruleId, rule.ruleVersion, rule.enabled)}
+                      >
+                        {rule.enabled ? "Disable" : "Enable"}
+                      </button>
+                    </div>
+                  ))}
+                  {alertRules.length === 0 ? <span style={{ color: "var(--muted)", fontSize: "0.75rem" }}>Alerts service offline or no rules defined</span> : null}
+                </div>
+              </div>
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Alert ID</th>
+                      <th>Event ID</th>
+                      <th>Rule</th>
+                      <th>Payload / Reason</th>
+                      <th>Detected · UTC</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {alerts.map((alert) => (
+                      <tr key={alert.alertId}>
+                        <td><code style={{ fontSize: "0.7rem", color: "var(--signal)" }}>{alert.alertId.substring(0, 12)}…</code></td>
+                        <td><span className="reason-token">{alert.eventId.substring(0, 16)}…</span></td>
+                        <td><span className="zone-token">{alert.ruleId} (v{alert.ruleVersion})</span></td>
+                        <td className="detail-cell">{JSON.stringify(alert.payload)}</td>
+                        <td>{formatUtc(alert.createdAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {alerts.length === 0 ? <p className="table-empty">No anomaly alerts triggered for this dataset.</p> : null}
+              </div>
             </section>
 
             <section id="provenance" className="provenance">

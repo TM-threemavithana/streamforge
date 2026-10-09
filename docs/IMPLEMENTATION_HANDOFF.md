@@ -102,6 +102,20 @@ Read these records before modifying Phase 5 behavior:
 - `docs/verification/phase-5-foundation.md`
 - `services/core-go/internal/eventstream/`
 
+### Phase 6 — complete
+
+- Spring Boot 4.1.1 service (`services/alerts-java`) on Java 17.
+- Defined ADR-007 for independent alerts architecture, event schema compatibility, and deterministic alert ID canonical encoding.
+- Table-driven unit-tested RuleEngine (`HIGH_FARE`, `LONG_DISTANCE`, `UNUSUAL_DURATION`).
+- Isolated database ownership (`streamforge_alerts`) with Flyway migrations V1 (tables) and V2 (default seed rules).
+- Dual idempotency: offset-level tracking via `alert_event_outcomes` and content-level deduplication via SHA-256 `alert_id`.
+- Kafka consumer with manual ack mode under consumer group `streamforge-alerts-v1`.
+- Complete REST APIs for rules management and alert querying (`/api/v1/alerts-service/rules`, `/alerts`, `/health/live`, `/health/ready`).
+- Multi-stage Dockerfile and Compose integration in `deploy/docker/compose.yaml`.
+- React dashboard integration with active rules toggling and anomaly alert ledger.
+- Full test suite passing (13 tests including Testcontainers PostgreSQL and EmbeddedKafka).
+- Phase 6 verification record documented in `docs/verification/phase-6-alerts.md`.
+
 ## Current local topology
 
 ```text
@@ -124,6 +138,7 @@ Default local endpoints:
 | Kafka | `127.0.0.1:29092` |
 | Go gRPC | `127.0.0.1:50051` |
 | Go REST | `127.0.0.1:8080` |
+| Java REST | `127.0.0.1:8081` |
 | Dashboard | `127.0.0.1:4173` |
 
 Important environment variables:
@@ -133,6 +148,8 @@ Important environment variables:
 | `STREAMFORGE_DATABASE_URL` | Required Go PostgreSQL connection URL |
 | `STREAMFORGE_GRPC_ADDR` | Core gRPC address; default `127.0.0.1:50051` |
 | `STREAMFORGE_HTTP_ADDR` | Core REST address; default `127.0.0.1:8080` |
+| `STREAMFORGE_ALERTS_DATABASE_URL` | Java alerts PostgreSQL URL; default `jdbc:postgresql://127.0.0.1:5433/streamforge_alerts` |
+| `STREAMFORGE_ALERTS_PORT` | Java alerts HTTP port; default `8081` |
 | `STREAMFORGE_KAFKA_BROKERS` | Enables Kafka ingestion when set |
 | `STREAMFORGE_KAFKA_TOPIC` | Default `streamforge.raw-events.v1` |
 | `STREAMFORGE_KAFKA_CONSUMER_GROUP` | Default `streamforge-analytics-v1` |
