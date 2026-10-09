@@ -105,11 +105,15 @@ flowchart TD
 ## 3. Core Invariants & Correctness Guarantees
 
 1. **Deterministic Event Identity**:
-   $$\text{event\_id} = \text{SHA-256}\left(\text{"nyc-yellow:v1:"} + \text{source\_sha256} + \text{":"} + \text{row\_number}\right)$$
+   ```text
+   event_id = SHA-256("nyc-yellow:v1:" + source_sha256 + ":" + row_number)
+   ```
    Event identity is strictly derived from the immutable source Parquet SHA-256 checksum and zero-based row index. System clock changes or re-executions never generate conflicting keys.
 
 2. **Deterministic Alert Identity**:
-   $$\text{alert\_id} = \text{SHA-256}\left(\text{event\_id} + \text{"\|"} + \text{rule\_id} + \text{"\|"} + \text{rule\_version}\right)$$
+   ```text
+   alert_id = SHA-256(event_id + "|" + rule_id + "|" + rule_version)
+   ```
    Ensures anomaly notifications are idempotent; re-consuming an event never generates duplicate alert notifications.
 
 3. **Zero Floating-Point Drift**:
@@ -143,7 +147,10 @@ StreamForge eliminates serialization bottlenecks via pipelined Kafka batching in
 ### Independent PyArrow Baseline Reconciliation
 
 Every benchmark run reconciles database state against an independent in-memory PyArrow calculation computed directly from raw Parquet bytes:
-$$\text{Total Input Rows} = 10,000 \quad|\quad \text{Accepted Trips} = 10,000 \quad|\quad \text{Rejected Rows} = 0 \quad|\quad \text{Discrepancy} = \mathbf{0}$$
+
+```text
+Total Input Rows: 10,000  |  Accepted Trips: 10,000  |  Rejected Rows: 0  |  Discrepancy: 0
+```
 
 ---
 

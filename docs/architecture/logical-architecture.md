@@ -85,8 +85,12 @@ flowchart TD
 ## 3. Protocol & Identity Contracts
 
 1. **Deterministic Event Identity**:
-   $$\text{event\_id} = \text{SHA-256}\left(\text{"nyc-yellow:v1:"} + \text{source\_sha256} + \text{":"} + \text{row\_number}\right)$$
+   ```text
+   event_id = SHA-256("nyc-yellow:v1:" + source_sha256 + ":" + row_number)
+   ```
 2. **Deterministic Alert Identity**:
-   $$\text{alert\_id} = \text{SHA-256}\left(\text{event\_id} + \text{"\|"} + \text{rule\_id} + \text{"\|"} + \text{rule\_version}\right)$$
+   ```text
+   alert_id = SHA-256(event_id + "|" + rule_id + "|" + rule_version)
+   ```
 3. **Kafka Envelope**:
    Frozen schema `streamforge.raw-event:v1` containing schema version, kind (`TRIP` or `SOURCE_REJECTION`), trip payload, and rejection context.

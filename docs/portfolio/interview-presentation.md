@@ -34,11 +34,15 @@ A structured presentation deck outline designed for Senior and Staff Distributed
 
 ### Key Talking Points:
 - **Deterministic Event Identity Formulation:**
-  $$\text{event\_id} = \text{SHA-256}\left(\text{"nyc-yellow:v1:"} + \text{source\_sha256} + \text{":"} + \text{row\_number}\right)$$
+  ```text
+  event_id = SHA-256("nyc-yellow:v1:" + source_sha256 + ":" + row_number)
+  ```
   - Independent of wall-clock time, system clocks, or host machine.
   - Guarantees replay idempotency: re-running a 1M event dataset produces identical keys.
 - **Deterministic Alert Identity Formulation:**
-  $$\text{alert\_id} = \text{SHA-256}\left(\text{event\_id} + \text{"\|"} + \text{rule\_id} + \text{"\|"} + \text{rule\_version}\right)$$
+  ```text
+  alert_id = SHA-256(event_id + "|" + rule_id + "|" + rule_version)
+  ```
   - Ensures rule engine updates can be audited and prevents re-alerting on the same trip anomaly.
 - **Financial Exactness:**
   - Standard floating-point IEEE-754 arithmetic introduces drift over millions of additions (`0.1 + 0.2 != 0.3`).
