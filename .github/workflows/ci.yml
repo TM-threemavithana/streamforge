@@ -1,0 +1,142 @@
+name: StreamForge CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  python-replay:
+    name: Python Replay & Invariant Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run Pytest Suite
+        run: |
+          mkdir -p .tmp/pytest
+          export TEMP="$(pwd)/.tmp/pytest"
+          export TMP="$TEMP"
+          python -m pytest
+
+  core-go:
+    name: Go Core & Analytics Engine
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go 1.24
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: services/core-go/go.sum
+
+      - name: Run Go Unit Tests
+        working-directory: services/core-go
+        run: |
+          go test -v ./... -count=1
+
+      - name: Run Go Vet
+        working-directory: services/core-go
+        run: |
+          go vet ./...
+
+  alerts-java:
+    name: Java Alerts & Rules Service
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+          cache: "maven"
+
+      - name: Run Maven Tests
+        working-directory: services/alerts-java
+        run: |
+          chmod +x mvnw
+          ./mvnw test -B
+
+  dashboard:
+    name: React Dashboard Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: apps/dashboard/package.json
+
+      - name: Install Dependencies
+        working-directory: apps/dashboard
+        run: npm install
+
+      - name: Production TypeScript & Vite Build
+        working-directory: apps/dashboard
+        run: npm run build
+
+  helm-and-manifests:
+    name: Helm & Kubernetes Manifest Verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.17.1
+
+      - name: Lint Helm Chart
+        run: helm lint deploy/helm/streamforge
+
+      - name: Validate Rendered Kubernetes Security & Probes
+        run: python scripts/validate_helm_manifests.py
+
+  container-builds:
+    name: Docker Multi-Stage Image Builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Go Core & Analytics Image
+        uses: docker/build-push-action@v6
+        with:
+          context: services/core-go
+          push: false
+          tags: streamforge-core:ci-test
+
+      - name: Build Dashboard Image
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/dashboard
+          push: false
+          tags: streamforge-dashboard:ci-test

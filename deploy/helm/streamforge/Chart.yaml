@@ -1,0 +1,14 @@
+apiVersion: v2
+name: streamforge
+description: StreamForge distributed real-time data streaming and analytics pipeline
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+maintainers:
+  - name: StreamForge Team
+keywords:
+  - streaming
+  - analytics
+  - kafka
+  - alerts
+  - kubernetes

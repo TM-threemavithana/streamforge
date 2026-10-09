@@ -1,0 +1,24 @@
+{{- if .Values.postgres.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "streamforge.fullname" . }}-postgres-init
+  labels:
+    {{- include "streamforge.labels" . | nindent 4 }}
+data:
+  01-init-databases.sh: |
+    #!/bin/sh
+    set -e
+
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+        -- Create Core DB and user
+        CREATE USER {{ .Values.postgres.auth.coreUser }} WITH ENCRYPTED PASSWORD '{{ .Values.postgres.auth.corePassword }}';
+        CREATE DATABASE {{ .Values.postgres.auth.coreDatabase }} OWNER {{ .Values.postgres.auth.coreUser }};
+        GRANT ALL PRIVILEGES ON DATABASE {{ .Values.postgres.auth.coreDatabase }} TO {{ .Values.postgres.auth.coreUser }};
+
+        -- Create Alerts DB and user
+        CREATE USER {{ .Values.postgres.auth.alertsUser }} WITH ENCRYPTED PASSWORD '{{ .Values.postgres.auth.alertsPassword }}';
+        CREATE DATABASE {{ .Values.postgres.auth.alertsDatabase }} OWNER {{ .Values.postgres.auth.alertsUser }};
+        GRANT ALL PRIVILEGES ON DATABASE {{ .Values.postgres.auth.alertsDatabase }} TO {{ .Values.postgres.auth.alertsUser }};
+    EOSQL
+{{- end }}

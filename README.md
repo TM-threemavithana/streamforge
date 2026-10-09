@@ -32,8 +32,10 @@ Do not commit the TLC Parquet file. Record its locally measured checksum and too
 2. Phase 2 complete: modular Go domain/application layer, pgx/PostgreSQL migrations, transaction idempotency, rollback, and concurrency tests.
 3. Phase 3 complete: versioned Protobuf/gRPC ingestion, bounded retries, response-loss recovery, sanitized failures, and loopback-only exposure.
 4. Phase 4 complete: REST datasets/runs/analytics/quality APIs, read-only React/TypeScript dashboard, and reconciled 100-row demo.
+5. Phase 5 complete: Kafka raw-event streaming, at-least-once pipeline, consumer lag observability, and worker crash recovery.
 6. Phase 6 complete: independent Spring Boot Java alerts service, versioned rule engine, Kafka stream consumption, isolated PostgreSQL schema, dual idempotency, REST APIs, and React dashboard integration.
-7. Add Kubernetes/Helm, observability, security, and performance evidence in subsequent planned stages.
+7. Phase 7 complete: multi-stage containerization, Helm charts (`deploy/helm/streamforge`), least-privilege security profiles, Prometheus observability, automated PostgreSQL backup & disaster recovery drill.
+8. Phase 8 (next): performance profiling, 100K/1M/10M benchmark matrix, and portfolio release.
 
 ## Phase 2 status
 
@@ -169,6 +171,30 @@ Run Java test suite (13 tests including Testcontainers PostgreSQL and EmbeddedKa
 cd services\alerts-java
 .\mvnw.cmd test
 ```
+
+## Phase 7 Kubernetes, Helm, Security, and Observability status
+
+Phase 7 packages the complete StreamForge distributed topology into multi-stage container images, Helm charts, least-privilege security profiles, Prometheus observability, and automated disaster recovery verification:
+
+- **Helm Chart (`deploy/helm/streamforge`)**: Templates for Go core, Go analytics worker, Java alerts service, React dashboard, PostgreSQL (with dual database/user initialization), KRaft Kafka, NetworkPolicies, and ServiceAccounts.
+- **Security Hardening**: All application containers run as non-root user `10001:10001` with `readOnlyRootFilesystem: true`, `allowPrivilegeEscalation: false`, dropped capabilities (`ALL`), and `automountServiceAccountToken: false`. Database ownership is strictly partitioned between `streamforge_user` and `streamforge_alerts_user`.
+- **Observability**: Prometheus metrics endpoint (`GET /metrics`) on Go core tracking uptime, goroutines, memory, HTTP request volume, and Kafka consumer lag. Scrape annotations enabled on Kubernetes services. Distributed request correlation via `X-Request-ID`.
+- **Disaster Recovery**: Automated backup script (`scripts/backup_restore_drill.py` and `scripts/backup-db.ps1`) dumps timestamped SHA-256 verified archives and performs automated restoration drill with 100% data parity reconciliation across all invariant tables.
+- **Continuous Integration**: `.github/workflows/ci.yml` validates contracts, Python replay, Go core, Java alerts, Dashboard build, Helm charts, and container builds.
+
+Validate Helm chart and Kubernetes manifests locally:
+
+```powershell
+helm lint deploy\helm\streamforge
+python scripts\validate_helm_manifests.py
+```
+
+Run PostgreSQL backup and disaster recovery drill:
+
+```powershell
+.\scripts\backup-db.ps1 -Drill
+```
+
 
 ## Verified official source and complete demo
 

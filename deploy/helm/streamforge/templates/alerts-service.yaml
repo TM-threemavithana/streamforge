@@ -1,0 +1,25 @@
+{{- if .Values.alerts.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "streamforge.fullname" . }}-alerts
+  labels:
+    {{- include "streamforge.labels" . | nindent 4 }}
+    app.kubernetes.io/component: alerts
+  {{- if .Values.prometheus.scrape }}
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "{{ .Values.alerts.service.port }}"
+    prometheus.io/path: "/health/live"
+  {{- end }}
+spec:
+  type: {{ .Values.alerts.service.type }}
+  ports:
+    - port: {{ .Values.alerts.service.port }}
+      targetPort: 8081
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "streamforge.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: alerts
+{{- end }}

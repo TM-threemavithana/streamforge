@@ -13,4 +13,8 @@ func TestRequireLoopbackRejectsExternallyReachableBinds(t *testing.T) {
 			t.Fatalf("expected %q to be accepted: %v", address, err)
 		}
 	}
+	t.Setenv("STREAMFORGE_ALLOW_NON_LOOPBACK", "true")
+	if err := requireLoopback("HTTP", "0.0.0.0:8080"); err != nil {
+		t.Fatalf("expected 0.0.0.0:8080 to be allowed with STREAMFORGE_ALLOW_NON_LOOPBACK: %v", err)
+	}
 }

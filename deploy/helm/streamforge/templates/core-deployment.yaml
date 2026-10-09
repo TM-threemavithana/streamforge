@@ -1,0 +1,83 @@
+{{- if .Values.core.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "streamforge.fullname" . }}-core
+  labels:
+    {{- include "streamforge.labels" . | nindent 4 }}
+    app.kubernetes.io/component: core
+spec:
+  replicas: {{ .Values.core.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "streamforge.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: core
+  template:
+    metadata:
+      labels:
+        {{- include "streamforge.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: core
+      {{- if .Values.prometheus.scrape }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.core.service.httpPort }}"
+        prometheus.io/path: "/metrics"
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "streamforge.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      containers:
+        - name: core
+          image: "{{ .Values.core.image.repository }}:{{ .Values.core.image.tag }}"
+          imagePullPolicy: {{ .Values.core.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: grpc
+              containerPort: 50051
+              protocol: TCP
+          env:
+            - name: STREAMFORGE_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "streamforge.fullname" . }}-secrets
+                  key: STREAMFORGE_DATABASE_URL
+            - name: STREAMFORGE_KAFKA_BROKERS
+              value: "{{ include "streamforge.fullname" . }}-kafka:9092"
+            - name: STREAMFORGE_KAFKA_TOPIC
+              value: {{ .Values.core.env.kafkaTopic | quote }}
+            - name: STREAMFORGE_KAFKA_CONSUMER_GROUP
+              value: {{ .Values.core.env.kafkaConsumerGroup | quote }}
+            - name: STREAMFORGE_ALLOW_NON_LOOPBACK
+              value: {{ .Values.core.env.allowNonLoopback | quote }}
+            - name: STREAMFORGE_GRPC_ADDR
+              value: {{ .Values.core.env.grpcAddr | quote }}
+            - name: STREAMFORGE_HTTP_ADDR
+              value: {{ .Values.core.env.httpAddr | quote }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.core.probes.liveness.path }}
+              port: 8080
+            initialDelaySeconds: {{ .Values.core.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.core.probes.liveness.periodSeconds }}
+            failureThreshold: {{ .Values.core.probes.liveness.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.core.probes.readiness.path }}
+              port: 8080
+            initialDelaySeconds: {{ .Values.core.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.core.probes.readiness.periodSeconds }}
+            failureThreshold: {{ .Values.core.probes.readiness.failureThreshold }}
+          resources:
+            {{- toYaml .Values.core.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}

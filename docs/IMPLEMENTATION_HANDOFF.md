@@ -366,18 +366,11 @@ Additional release work:
 
 ## Immediate next task
 
-Start Phase 6 with ADR-007 and the Java service contract. Before writing Spring
-Boot infrastructure, freeze:
+Phase 6 (Java/Spring Boot Alerts) and Phase 7 (Kubernetes, Helm, Security Hardening, and Observability) are fully implemented and verified. The immediate next task is **Phase 8 — Performance and Portfolio Release**:
 
-1. the supported `streamforge.raw-event:v1` envelope fields;
-2. the initial rule kinds and explicit threshold configuration;
-3. deterministic alert-ID canonical encoding and test vectors;
-4. alert database ownership and transaction boundary;
-5. consumer-group name, retry classification, and permanent-failure policy;
-6. the minimum read/write API surface.
-
-Do not begin Kubernetes packaging until the Java service works and has
-crash/replay integration evidence under Docker Compose.
+1. Run the benchmark matrix (100K, 1M, 10M events) measuring sustained throughput and p50/p95/p99 latencies across consumer replica scales (1, 2, 4 replicas).
+2. Complete end-to-end reconciliation against independent Parquet baselines.
+3. Finalize operational runbooks, failure scenario demonstrations, and engineering portfolio documentation.
 
 ## Definition of done for all remaining work
 

@@ -56,6 +56,23 @@ func TestKafkaLagSanitizesDependencyFailure(t *testing.T) {
 	}
 }
 
+func TestMetricsEndpointExposesPrometheusFormat(t *testing.T) {
+	request := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	recorder := httptest.NewRecorder()
+	server := &Server{lagReader: lagReaderStub{lag: domain.ConsumerLag{Group: "analytics", TotalLag: 12, ObservedAt: time.Now()}}}
+	server.metrics(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	body := recorder.Body.String()
+	if !containsText(recorder.Body.Bytes(), "streamforge_build_info") ||
+		!containsText(recorder.Body.Bytes(), "streamforge_uptime_seconds") ||
+		!containsText(recorder.Body.Bytes(), "streamforge_go_goroutines") ||
+		!containsText(recorder.Body.Bytes(), "streamforge_kafka_consumer_lag{group=\"analytics\"} 12") {
+		t.Fatalf("unexpected metrics body:\n%s", body)
+	}
+}
+
 func containsJSONNumber(body []byte, field string, expected float64) bool {
 	var value map[string]any
 	if json.Unmarshal(body, &value) != nil {

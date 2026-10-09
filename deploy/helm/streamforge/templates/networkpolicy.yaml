@@ -1,0 +1,139 @@
+{{- if .Values.networkPolicy.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "streamforge.fullname" . }}-core
+  labels:
+    {{- include "streamforge.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "streamforge.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: core
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 50051
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "streamforge.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "streamforge.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: kafka
+      ports:
+        - protocol: TCP
+          port: 9092
+    - ports:
+        - protocol: UDP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "streamforge.fullname" . }}-alerts
+  labels:
+    {{- include "streamforge.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "streamforge.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: alerts
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 8081
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "streamforge.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "streamforge.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: kafka
+      ports:
+        - protocol: TCP
+          port: 9092
+    - ports:
+        - protocol: UDP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "streamforge.fullname" . }}-analytics
+  labels:
+    {{- include "streamforge.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "streamforge.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: analytics
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "streamforge.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "streamforge.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: kafka
+      ports:
+        - protocol: TCP
+          port: 9092
+    - ports:
+        - protocol: UDP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "streamforge.fullname" . }}-postgres
+  labels:
+    {{- include "streamforge.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "streamforge.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "streamforge.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 5432
+{{- end }}

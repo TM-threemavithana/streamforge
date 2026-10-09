@@ -1,0 +1,102 @@
+{{- if .Values.alerts.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "streamforge.fullname" . }}-alerts
+  labels:
+    {{- include "streamforge.labels" . | nindent 4 }}
+    app.kubernetes.io/component: alerts
+spec:
+  replicas: {{ .Values.alerts.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "streamforge.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: alerts
+  template:
+    metadata:
+      labels:
+        {{- include "streamforge.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: alerts
+      {{- if .Values.prometheus.scrape }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.alerts.service.port }}"
+        prometheus.io/path: "/health/live"
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "streamforge.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      containers:
+        - name: alerts
+          image: "{{ .Values.alerts.image.repository }}:{{ .Values.alerts.image.tag }}"
+          imagePullPolicy: {{ .Values.alerts.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8081
+              protocol: TCP
+          env:
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "streamforge.fullname" . }}-secrets
+                  key: STREAMFORGE_ALERTS_DATABASE_URL
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "streamforge.fullname" . }}-secrets
+                  key: STREAMFORGE_ALERTS_DATABASE_USER
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "streamforge.fullname" . }}-secrets
+                  key: STREAMFORGE_ALERTS_DATABASE_PASSWORD
+            - name: STREAMFORGE_ALERTS_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "streamforge.fullname" . }}-secrets
+                  key: STREAMFORGE_ALERTS_DATABASE_URL
+            - name: STREAMFORGE_KAFKA_BROKERS
+              value: "{{ include "streamforge.fullname" . }}-kafka:9092"
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              value: "{{ include "streamforge.fullname" . }}-kafka:9092"
+            - name: STREAMFORGE_KAFKA_TOPIC
+              value: {{ .Values.alerts.env.kafkaTopic | quote }}
+            - name: STREAMFORGE_KAFKA_CONSUMER_GROUP
+              value: {{ .Values.alerts.env.kafkaConsumerGroup | quote }}
+            - name: SERVER_PORT
+              value: {{ .Values.alerts.env.port | quote }}
+            - name: STREAMFORGE_ALERTS_PORT
+              value: {{ .Values.alerts.env.port | quote }}
+          {{- if .Values.alerts.probes.startup }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.alerts.probes.startup.path }}
+              port: 8081
+            initialDelaySeconds: {{ .Values.alerts.probes.startup.initialDelaySeconds }}
+            periodSeconds: {{ .Values.alerts.probes.startup.periodSeconds }}
+            failureThreshold: {{ .Values.alerts.probes.startup.failureThreshold }}
+          {{- end }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.alerts.probes.liveness.path }}
+              port: 8081
+            periodSeconds: {{ .Values.alerts.probes.liveness.periodSeconds }}
+            failureThreshold: {{ .Values.alerts.probes.liveness.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.alerts.probes.readiness.path }}
+              port: 8081
+            periodSeconds: {{ .Values.alerts.probes.readiness.periodSeconds }}
+            failureThreshold: {{ .Values.alerts.probes.readiness.failureThreshold }}
+          resources:
+            {{- toYaml .Values.alerts.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}

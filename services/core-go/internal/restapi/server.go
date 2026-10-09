@@ -42,6 +42,7 @@ func NewServer(repository application.CatalogRepository, options ...Option) *Ser
 	}
 	server.mux.HandleFunc("GET /health/live", server.live)
 	server.mux.HandleFunc("GET /health/ready", server.ready)
+	server.mux.HandleFunc("GET /metrics", server.metrics)
 	server.mux.HandleFunc("POST /api/v1/datasets", server.registerDataset)
 	server.mux.HandleFunc("GET /api/v1/datasets", server.listDatasets)
 	server.mux.HandleFunc("GET /api/v1/datasets/{id}", server.getDataset)
@@ -306,6 +307,7 @@ func lowerHexSHA(value string) bool {
 }
 func requestIDMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		totalRequests.Add(1)
 		id := r.Header.Get("X-Request-ID")
 		if !requestIDPattern.MatchString(id) {
 			bytes := make([]byte, 16)

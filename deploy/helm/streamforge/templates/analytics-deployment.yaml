@@ -1,0 +1,52 @@
+{{- if .Values.analytics.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "streamforge.fullname" . }}-analytics
+  labels:
+    {{- include "streamforge.labels" . | nindent 4 }}
+    app.kubernetes.io/component: analytics
+spec:
+  replicas: {{ .Values.analytics.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "streamforge.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: analytics
+  template:
+    metadata:
+      labels:
+        {{- include "streamforge.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: analytics
+    spec:
+      serviceAccountName: {{ include "streamforge.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      containers:
+        - name: analytics
+          image: "{{ .Values.analytics.image.repository }}:{{ .Values.analytics.image.tag }}"
+          imagePullPolicy: {{ .Values.analytics.image.pullPolicy }}
+          command:
+            {{- toYaml .Values.analytics.command | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          env:
+            - name: STREAMFORGE_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "streamforge.fullname" . }}-secrets
+                  key: STREAMFORGE_DATABASE_URL
+            - name: STREAMFORGE_KAFKA_BROKERS
+              value: "{{ include "streamforge.fullname" . }}-kafka:9092"
+            - name: STREAMFORGE_KAFKA_TOPIC
+              value: {{ .Values.analytics.env.kafkaTopic | quote }}
+            - name: STREAMFORGE_KAFKA_CONSUMER_GROUP
+              value: {{ .Values.analytics.env.kafkaConsumerGroup | quote }}
+          resources:
+            {{- toYaml .Values.analytics.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}

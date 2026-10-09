@@ -148,6 +148,9 @@ func commaSeparated(value string) []string {
 }
 
 func requireLoopback(name, address string) error {
+	if os.Getenv("STREAMFORGE_ALLOW_NON_LOOPBACK") == "true" {
+		return nil
+	}
 	host, _, err := net.SplitHostPort(address)
 	if err != nil {
 		return errors.New(name + " address must be host:port")

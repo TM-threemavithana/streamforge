@@ -1,0 +1,29 @@
+{{- if .Values.core.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "streamforge.fullname" . }}-core
+  labels:
+    {{- include "streamforge.labels" . | nindent 4 }}
+    app.kubernetes.io/component: core
+  {{- if .Values.prometheus.scrape }}
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "{{ .Values.core.service.httpPort }}"
+    prometheus.io/path: "/metrics"
+  {{- end }}
+spec:
+  type: {{ .Values.core.service.type }}
+  ports:
+    - port: {{ .Values.core.service.httpPort }}
+      targetPort: 8080
+      protocol: TCP
+      name: http
+    - port: {{ .Values.core.service.grpcPort }}
+      targetPort: 50051
+      protocol: TCP
+      name: grpc
+  selector:
+    {{- include "streamforge.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: core
+{{- end }}
