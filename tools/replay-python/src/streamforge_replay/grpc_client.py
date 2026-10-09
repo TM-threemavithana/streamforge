@@ -52,7 +52,7 @@ class IngestionClient:
         self,
         target: str,
         *,
-        timeout_seconds: float = 10.0,
+        timeout_seconds: float = 30.0,
         retry_policy: RetryPolicy = RetryPolicy(),
         channel: grpc.Channel | None = None,
     ) -> None:

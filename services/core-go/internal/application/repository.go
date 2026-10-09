@@ -13,3 +13,9 @@ type EventRepository interface {
 	ProcessEvent(ctx context.Context, event domain.TripEvent) (domain.EventResult, error)
 	ReportSourceRejection(ctx context.Context, rejection domain.SourceRejection) (domain.EventResult, error)
 }
+
+// BatchEventRepository optionally extends EventRepository to process batches in a pipelined fashion.
+type BatchEventRepository interface {
+	EventRepository
+	ProcessBatch(ctx context.Context, events []domain.TripEvent) ([]domain.EventResult, error)
+}

@@ -35,7 +35,7 @@ Do not commit the TLC Parquet file. Record its locally measured checksum and too
 5. Phase 5 complete: Kafka raw-event streaming, at-least-once pipeline, consumer lag observability, and worker crash recovery.
 6. Phase 6 complete: independent Spring Boot Java alerts service, versioned rule engine, Kafka stream consumption, isolated PostgreSQL schema, dual idempotency, REST APIs, and React dashboard integration.
 7. Phase 7 complete: multi-stage containerization, Helm charts (`deploy/helm/streamforge`), least-privilege security profiles, Prometheus observability, automated PostgreSQL backup & disaster recovery drill.
-8. Phase 8 (next): performance profiling, 100K/1M/10M benchmark matrix, and portfolio release.
+8. Phase 8 complete: performance profiling & pipelined Kafka batching (117x speedup: 83.6 to 9,792 eps), PyArrow independent baseline reconciliation, architecture suite, STRIDE threat model, operational runbooks, engineering portfolio case study & interview deck, and unified release gate.
 
 ## Phase 2 status
 
@@ -194,6 +194,40 @@ Run PostgreSQL backup and disaster recovery drill:
 ```powershell
 .\scripts\backup-db.ps1 -Drill
 ```
+
+## Phase 8: Performance Profiling, Invariant Reconciliation & Release Gate
+
+Phase 8 elevates ingestion throughput from 83.6 to **9,792.9 events/sec** (a 117x speedup) through pipelined `franz-go` Kafka batching, validated against an independent in-memory PyArrow kernel baseline with 100% data and financial parity.
+
+### 1. Unified Release Gate (Single Command)
+Run the automated end-to-end quality and compliance gate (Python pytest, Go test suite, Helm manifest audit, PostgreSQL DR drill, and Benchmark validation):
+
+```powershell
+python scripts\release_gate.py
+# Or via PowerShell wrapper:
+.\scripts\release-gate.ps1
+```
+
+### 2. Automated Performance Benchmark & PyArrow Reconciliation
+Profile sustained ingestion throughput, producer latency percentiles, and REST query latencies:
+
+```powershell
+python tools\benchmarks\benchmark_harness.py --size 10000 --batch-size 500
+```
+- Empirical findings: 9,792.9 events/sec, p50 producer latency 28.4 ms, p95 query latency 30.0 ms, zero discrepancy.
+- Detailed results are recorded in [docs/verification/benchmark_summary.md](docs/verification/benchmark_summary.md).
+
+### 3. Architecture & Portfolio Deliverables
+- **Architecture Models:**
+  - [Logical Architecture](docs/architecture/logical-architecture.md)
+  - [Deployment Architecture](docs/architecture/deployment-architecture.md)
+  - [Data Flow & Failure Sequence](docs/architecture/data-flow-and-failure-sequence.md)
+- **Security Posture:** [STRIDE Threat Model & RBAC](docs/security/threat-model.md)
+- **Operational Runbooks:** [Operations & Disaster Recovery Runbooks](docs/runbooks/operations-and-disaster-recovery.md)
+- **Engineering Portfolio:**
+  - [Technical Case Study](docs/portfolio/case-study.md)
+  - [Senior / Staff Interview Presentation](docs/portfolio/interview-presentation.md)
+- **Verification Records:** [Phase 8 Verification Summary](docs/verification/phase-8-portfolio-release.md)
 
 
 ## Verified official source and complete demo

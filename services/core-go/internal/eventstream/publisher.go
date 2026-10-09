@@ -14,6 +14,11 @@ type RecordPublisher interface {
 	Publish(ctx context.Context, topic string, key, value []byte) error
 }
 
+type BatchRecordPublisher interface {
+	RecordPublisher
+	PublishBatch(ctx context.Context, records []*kgo.Record) error
+}
+
 type KafkaPublisher struct {
 	client *kgo.Client
 }
@@ -26,6 +31,14 @@ func (publisher *KafkaPublisher) Publish(ctx context.Context, topic string, key,
 	result := publisher.client.ProduceSync(ctx, &kgo.Record{Topic: topic, Key: key, Value: value})
 	if err := result.FirstErr(); err != nil {
 		return fmt.Errorf("publish Kafka record: %w", err)
+	}
+	return nil
+}
+
+func (publisher *KafkaPublisher) PublishBatch(ctx context.Context, records []*kgo.Record) error {
+	results := publisher.client.ProduceSync(ctx, records...)
+	if err := results.FirstErr(); err != nil {
+		return fmt.Errorf("publish Kafka batch: %w", err)
 	}
 	return nil
 }
@@ -68,4 +81,44 @@ func (repository *Repository) ReportSourceRejection(ctx context.Context, rejecti
 		EventID: rejection.EventID, Outcome: domain.OutcomeRejected,
 		AckStage: KafkaPublished, ReasonCode: rejection.ReasonCode,
 	}, nil
+}
+
+func (repository *Repository) ProcessBatch(ctx context.Context, events []domain.TripEvent) ([]domain.EventResult, error) {
+	if len(events) == 0 {
+		return nil, nil
+	}
+	records := make([]*kgo.Record, len(events))
+	results := make([]domain.EventResult, len(events))
+	for i, event := range events {
+		if repository.topic == "" || event.EventID == "" || event.DatasetID == "" || event.RunID == "" {
+			return nil, fmt.Errorf("%w: topic, event ID, dataset ID, and run ID are required", domain.ErrInvalidInput)
+		}
+		payload, err := EncodeTrip(event)
+		if err != nil {
+			return nil, fmt.Errorf("encode trip event: %w", err)
+		}
+		records[i] = &kgo.Record{
+			Topic: repository.topic,
+			Key:   []byte(event.EventID),
+			Value: payload,
+		}
+		results[i] = domain.EventResult{
+			EventID:  event.EventID,
+			Outcome:  domain.OutcomeAccepted,
+			AckStage: KafkaPublished,
+		}
+	}
+
+	if batchPub, ok := repository.publisher.(BatchRecordPublisher); ok {
+		if err := batchPub.PublishBatch(ctx, records); err != nil {
+			return nil, err
+		}
+	} else {
+		for _, rec := range records {
+			if err := repository.publisher.Publish(ctx, rec.Topic, rec.Key, rec.Value); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return results, nil
 }

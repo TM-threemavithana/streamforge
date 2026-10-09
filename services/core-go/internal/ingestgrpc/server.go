@@ -34,12 +34,30 @@ func (server *Server) IngestBatch(ctx context.Context, request *ingestv1.IngestB
 	}
 
 	response := &ingestv1.IngestBatchResponse{RequestId: request.GetRequestId()}
-	response.Results = make([]*ingestv1.EventResult, 0, len(request.GetEvents()))
+	events := make([]domain.TripEvent, len(request.GetEvents()))
 	for index, message := range request.GetEvents() {
 		event, err := domainEvent(message)
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "events[%d]: %v", index, err)
 		}
+		events[index] = event
+	}
+
+	if batchRepo, ok := server.repository.(application.BatchEventRepository); ok {
+		results, err := batchRepo.ProcessBatch(ctx, events)
+		if err != nil {
+			logRepositoryError(request.GetRequestId(), err)
+			return nil, repositoryStatus(err)
+		}
+		response.Results = make([]*ingestv1.EventResult, len(results))
+		for i, res := range results {
+			response.Results[i] = protocolResult(res)
+		}
+		return response, nil
+	}
+
+	response.Results = make([]*ingestv1.EventResult, 0, len(events))
+	for _, event := range events {
 		result, err := server.repository.ProcessEvent(ctx, event)
 		if err != nil {
 			logRepositoryError(request.GetRequestId(), err)
