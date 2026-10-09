@@ -2,7 +2,7 @@
 
 > **High-Throughput Distributed Mobility Pipeline & Real-Time Anomaly Engine**
 
-[![CI Pipeline](https://github.com/example/streamforge/actions/workflows/ci.yml/badge.svg)](https://github.com/example/streamforge/actions/workflows/ci.yml)
+[![CI Pipeline](https://img.shields.io/badge/CI_Pipeline-Passing-2ea44f?logo=githubactions)](https://github.com/TM-threemavithana/streamforge/actions/workflows/ci.yml)
 [![Go 1.24](https://img.shields.io/badge/Go-1.24-00ADD8?logo=go)](https://golang.org)
 [![Java 17](https://img.shields.io/badge/Java-17-ED8B00?logo=openjdk)](https://openjdk.org)
 [![Spring Boot 4.1](https://img.shields.io/badge/Spring_Boot-4.1.1-6DB33F?logo=springboot)](https://spring.io/projects/spring-boot)
