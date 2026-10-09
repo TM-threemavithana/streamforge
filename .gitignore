@@ -3,7 +3,10 @@ __pycache__/
 .pytest_cache/
 *.py[cod]
 *.parquet
-data/
+data/*.parquet
+data/slices/
+!data/reference/
+!data/reference/**
 
 # JavaScript dependencies and generated frontend output
 node_modules/
