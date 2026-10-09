@@ -1,6 +1,7 @@
 package restapi
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -24,11 +25,21 @@ var requestIDPattern = regexp.MustCompile(`^[A-Za-z0-9._-]{1,128}$`)
 
 type Server struct {
 	repository application.CatalogRepository
+	lagReader  application.ConsumerLagReader
 	mux        *http.ServeMux
 }
 
-func NewServer(repository application.CatalogRepository) *Server {
+type Option func(*Server)
+
+func WithConsumerLag(reader application.ConsumerLagReader) Option {
+	return func(server *Server) { server.lagReader = reader }
+}
+
+func NewServer(repository application.CatalogRepository, options ...Option) *Server {
 	server := &Server{repository: repository, mux: http.NewServeMux()}
+	for _, option := range options {
+		option(server)
+	}
 	server.mux.HandleFunc("GET /health/live", server.live)
 	server.mux.HandleFunc("GET /health/ready", server.ready)
 	server.mux.HandleFunc("POST /api/v1/datasets", server.registerDataset)
@@ -41,7 +52,23 @@ func NewServer(repository application.CatalogRepository) *Server {
 	server.mux.HandleFunc("POST /api/v1/runs/{id}/cancel", server.cancelRun)
 	server.mux.HandleFunc("GET /api/v1/analytics/zone-hourly", server.zoneHourly)
 	server.mux.HandleFunc("GET /api/v1/quality/rejections", server.rejections)
+	server.mux.HandleFunc("GET /api/v1/operations/kafka-lag", server.kafkaLag)
 	return server
+}
+
+func (server *Server) kafkaLag(w http.ResponseWriter, r *http.Request) {
+	if server.lagReader == nil {
+		writeJSON(w, http.StatusOK, map[string]any{"enabled": false, "available": false})
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+	lag, err := server.lagReader.ReadConsumerLag(ctx)
+	if err != nil {
+		writeError(w, r, http.StatusServiceUnavailable, "DEPENDENCY_UNAVAILABLE", "Kafka consumer lag is unavailable", nil)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"enabled": true, "available": true, "consumer": lag})
 }
 
 func (server *Server) Handler() http.Handler { return requestIDMiddleware(server.mux) }

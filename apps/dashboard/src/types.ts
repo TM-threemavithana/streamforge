@@ -66,6 +66,29 @@ export interface RunPage {
   next_cursor: string | null;
 }
 
+export interface ConsumerPartitionLag {
+  topic: string;
+  partition: number;
+  committed_offset: number;
+  end_offset: number;
+  lag: number;
+}
+
+export interface ConsumerLag {
+  group: string;
+  state: string;
+  members: number;
+  total_lag: number;
+  partitions: ConsumerPartitionLag[];
+  observed_at: string;
+}
+
+export interface KafkaLagStatus {
+  enabled: boolean;
+  available: boolean;
+  consumer?: ConsumerLag;
+}
+
 export interface ApiProblem {
   code?: string;
   message?: string;

@@ -147,7 +147,7 @@ func repositoryStatus(err error) error {
 	case errors.Is(err, domain.ErrRunNotRunning):
 		return status.Error(codes.FailedPrecondition, err.Error())
 	default:
-		return status.Error(codes.Unavailable, "storage operation failed; retry with the same request and event IDs")
+		return status.Error(codes.Unavailable, "durable ingestion operation failed; retry with the same request and event IDs")
 	}
 }
 
@@ -169,8 +169,11 @@ func protocolResult(result domain.EventResult) *ingestv1.EventResult {
 		outcome = ingestv1.Outcome_OUTCOME_REJECTED
 	}
 	ackStage := ingestv1.AckStage_ACK_STAGE_UNSPECIFIED
-	if result.AckStage == "DATABASE_COMMITTED" {
+	switch result.AckStage {
+	case "DATABASE_COMMITTED":
 		ackStage = ingestv1.AckStage_ACK_STAGE_DATABASE_COMMITTED
+	case "KAFKA_PUBLISHED":
+		ackStage = ingestv1.AckStage_ACK_STAGE_KAFKA_PUBLISHED
 	}
 	return &ingestv1.EventResult{
 		EventId: result.EventID, Outcome: outcome, AckStage: ackStage,

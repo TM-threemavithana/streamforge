@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ApiError, getAnalytics, getRejections, getRuns, listDatasets } from "./api";
-import type { Dataset, HourlyZoneStat, RejectionRecord, ReplayRun } from "./types";
+import { ApiError, getAnalytics, getKafkaLag, getRejections, getRuns, listDatasets } from "./api";
+import type { Dataset, HourlyZoneStat, KafkaLagStatus, RejectionRecord, ReplayRun } from "./types";
 
 const JAN_START = "2024-01-01T00:00";
 const FEB_START = "2024-02-01T00:00";
@@ -130,6 +130,7 @@ export function App() {
   const [rows, setRows] = useState<HourlyZoneStat[]>([]);
   const [rejections, setRejections] = useState<RejectionRecord[]>([]);
   const [runs, setRuns] = useState<ReplayRun[]>([]);
+  const [kafkaLag, setKafkaLag] = useState<KafkaLagStatus>({ enabled: false, available: false });
   const [rejectionCursor, setRejectionCursor] = useState<string | null>(null);
   const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([]);
   const [datasetComplete, setDatasetComplete] = useState(false);
@@ -165,13 +166,18 @@ export function App() {
         getAnalytics(datasetId, toUtc(filters.start), toUtc(filters.end), filters.zone, controller.signal),
         getRejections(datasetId, cursor, controller.signal),
         getRuns(datasetId, controller.signal),
+        getKafkaLag(controller.signal).catch((reason: unknown) => {
+          if (reason instanceof DOMException && reason.name === "AbortError") throw reason;
+          return { enabled: true, available: false } satisfies KafkaLagStatus;
+        }),
       ])
-        .then(([analytics, rejectionPage, runPage]) => {
+        .then(([analytics, rejectionPage, runPage, lagStatus]) => {
           setRows(analytics.items);
           setDatasetComplete(analytics.dataset_complete);
           setRejections(rejectionPage.items);
           setRejectionCursor(rejectionPage.next_cursor);
           setRuns(runPage.items);
+          setKafkaLag(lagStatus);
         })
         .catch((reason) => {
           if (reason instanceof DOMException && reason.name === "AbortError") return;
@@ -289,7 +295,21 @@ export function App() {
               <article className="kpi panel">
                 <p className="eyebrow">Observed fare</p><strong>{formatMoney(totals.fare)}</strong><span>{compactNumber(totals.fareCount)} trips with fare</span>
               </article>
+              <article className="kpi panel pipeline-kpi">
+                <p className="eyebrow">Pipeline</p>
+                <strong>{kafkaLag.enabled ? (kafkaLag.available ? kafkaLag.consumer?.total_lag.toLocaleString() : "—") : "Direct"}</strong>
+                <span>{kafkaLag.enabled ? (kafkaLag.available ? `Kafka records behind · ${kafkaLag.consumer?.state ?? "unknown"}` : "Kafka lag unavailable") : "Synchronous database mode"}</span>
+              </article>
             </section>
+
+            {kafkaLag.enabled ? (
+              <section className="panel table-panel">
+                <div className="panel-heading"><div><p className="eyebrow">Asynchronous pipeline</p><h2>Kafka consumer lag</h2></div><span className="range-label">{kafkaLag.available ? `${kafkaLag.consumer?.group} · ${kafkaLag.consumer?.members ?? 0} active member(s)` : "Broker metrics unavailable"}</span></div>
+                {kafkaLag.available ? <div className="table-scroll"><table><thead><tr><th>Topic</th><th>Partition</th><th>Committed offset</th><th>End offset</th><th>Lag</th></tr></thead>
+                  <tbody>{kafkaLag.consumer?.partitions.map((partition) => <tr key={`${partition.topic}-${partition.partition}`}><td>{partition.topic}</td><td>{partition.partition}</td><td>{partition.committed_offset.toLocaleString()}</td><td>{partition.end_offset.toLocaleString()}</td><td><span className={partition.lag === 0 ? "lag-good" : "lag-behind"}>{partition.lag.toLocaleString()}</span></td></tr>)}</tbody>
+                </table></div> : <p className="table-empty">Durable analytics remain available, but Kafka offsets could not be read.</p>}
+              </section>
+            ) : null}
 
             <section className="panel chart-panel">
               <div className="panel-heading"><div><p className="eyebrow">Throughput shape</p><h2>Accepted trips by pickup hour</h2></div><span className="range-label">{rows.length} hour-zone buckets</span></div>

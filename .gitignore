@@ -13,6 +13,7 @@ dist/
 # Local test/build output
 coverage/
 *.log
+.tmp/
 
 # Local environment and editor files
 .env

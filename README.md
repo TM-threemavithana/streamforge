@@ -2,7 +2,7 @@
 
 StreamForge is a mobility operations and data-quality portfolio project. It replays the official NYC TLC Yellow Taxi January 2024 **historical** Parquet dataset; it is not live vehicle tracking.
 
-The Python/PyArrow adapter reads bounded record batches, normalizes the six authoritative source fields, derives reproducible source-row event IDs, and reports explicit validation failures. The Go/PostgreSQL ingestion path uses database uniqueness and atomic aggregate updates so retries and crashes do not double-count accepted source events.
+The Python/PyArrow adapter reads bounded record batches, normalizes the six authoritative source fields, derives reproducible source-row event IDs, and reports explicit validation failures. The Go/PostgreSQL ingestion path uses database uniqueness and atomic aggregate updates so retries and crashes do not double-count accepted source events. Phase 5 adds an optional Kafka ingestion mode with a separate Go analytics consumer while retaining PostgreSQL as the idempotency boundary.
 
 ## Phase 1 contract
 
@@ -32,11 +32,12 @@ Do not commit the TLC Parquet file. Record its locally measured checksum and too
 2. Phase 2 complete: modular Go domain/application layer, pgx/PostgreSQL migrations, transaction idempotency, rollback, and concurrency tests.
 3. Phase 3 complete: versioned Protobuf/gRPC ingestion, bounded retries, response-loss recovery, sanitized failures, and loopback-only exposure.
 4. Phase 4 complete: REST datasets/runs/analytics/quality APIs, read-only React/TypeScript dashboard, and reconciled 100-row demo.
-5. Introduce Kafka, the independent Java rules service, Compose, Kubernetes/Helm, observability, security, and performance evidence only in their planned stages.
+5. Phase 5 complete: Kafka Compose topology, topic/key strategy, broker acknowledgment, analytics consumer, durable poison-message handling, broker-derived lag observability, and automated crash/restart evidence.
+6. Add the independent Java rules service, Kubernetes/Helm, observability, security, and performance evidence only in their planned stages.
 
 ## Phase 2 status
 
-The Go domain model, replay-run transition rules, persistence interface, seven ordered PostgreSQL migrations, and pgx-backed transactional PostgreSQL repositories are present. The live PostgreSQL integration tests verify same-run retry stability, cross-run duplicate handling, exactly-once aggregate updates, forced rollback with no partial event, outcome, or aggregate change, durable source rejections, accepted/rejected request races, terminal-run transition races, and fresh forward migrations.
+The Go domain model, replay-run transition rules, persistence interface, eight ordered PostgreSQL migrations, and pgx-backed transactional PostgreSQL repositories are present. The live PostgreSQL integration tests verify same-run retry stability, cross-run duplicate handling, exactly-once aggregate updates, forced rollback with no partial event, outcome, or aggregate change, durable source rejections, accepted/rejected request races, terminal-run transition races, and fresh forward migrations.
 
 ```powershell
 cd deploy\docker
@@ -51,7 +52,7 @@ Compose exposes the development database on loopback port `5433` by default to a
 
 ## Phase 3 status
 
-The authoritative `streamforge.ingest.v1` Protobuf contract, generated Go/Python bindings, Go gRPC server, and bounded-retry Python client are implemented. `IngestBatch` and `ReportSourceRejections` accept 1–500 records per request with a 4 MiB server limit. Successful results distinguish `DATABASE_COMMITTED` from future broker acknowledgments.
+The authoritative `streamforge.ingest.v1` Protobuf contract, generated Go/Python bindings, Go gRPC server, and bounded-retry Python client are implemented. `IngestBatch` and `ReportSourceRejections` accept 1–500 records per request with a 4 MiB server limit. Successful results distinguish `DATABASE_COMMITTED` from `KAFKA_PUBLISHED`; neither stage is presented as the other.
 
 Start the core service after PostgreSQL is healthy:
 
@@ -73,6 +74,34 @@ streamforge-replay .\data\yellow_tripdata_2024-01.parquet `
 
 The live cross-language integration test starts the Go gRPC server, invokes it with the generated Python client, discards the first success response after the database commit, and verifies that the automatic retry leaves exactly one event, outcome, and aggregate contribution. Protobuf generator versions and regeneration guidance are recorded in `tools/proto/README.md`.
 
+## Phase 5 Kafka status
+
+Docker Compose runs a pinned Apache Kafka 4.2.2 single-node KRaft broker on loopback port `29092` and creates `streamforge.raw-events.v1` with six partitions and seven-day retention. Stable `event_id` values are message keys; distinct trip events have no ordering dependency, so one large dataset can use all partitions.
+
+When `STREAMFORGE_KAFKA_BROKERS` is set, the core returns `KAFKA_PUBLISHED` only after an all-ISR broker acknowledgment. The separate `streamforge-analytics-v1` consumer disables automatic offset commits and advances each offset only after the existing idempotent PostgreSQL transaction commits. Permanent message failures are stored in `kafka_consumer_failures`; transient broker or database failures leave offsets unresolved. The guarantee and non-goals are recorded in `docs/adr/006-kafka-at-least-once.md`.
+
+`GET /api/v1/operations/kafka-lag` reports committed and end offsets for every partition in the configured analytics group. The dashboard renders total and per-partition lag without making analytics availability depend on Kafka monitoring availability. In direct database mode the endpoint explicitly reports Kafka as disabled.
+
+```powershell
+cd deploy\docker
+docker compose up -d --wait postgres kafka kafka-init
+
+cd ..\..\services\core-go
+$env:STREAMFORGE_DATABASE_URL='postgres://streamforge:local-development-only@127.0.0.1:5433/streamforge?sslmode=disable'
+$env:STREAMFORGE_KAFKA_BROKERS='127.0.0.1:29092'
+go run ./cmd/analytics
+```
+
+Start `go run ./cmd/core` with the same database and Kafka environment in a second shell. Without `STREAMFORGE_KAFKA_BROKERS`, the Phase 1–4 synchronous database path remains available for the original deterministic demo.
+
+Run the live failure-window test against the local Compose services:
+
+```powershell
+$env:STREAMFORGE_TEST_DATABASE_URL='postgres://streamforge:local-development-only@127.0.0.1:5433/streamforge?sslmode=disable'
+$env:STREAMFORGE_TEST_KAFKA_BROKERS='127.0.0.1:29092'
+go test ./internal/eventstream -run TestConsumerRestartBeforeAndAfterDatabaseCommitDoesNotDoubleCount -count=1 -v
+```
+
 ## Phase 4 API status
 
 The core process also serves the versioned REST API on `127.0.0.1:8080` by default. Set `STREAMFORGE_HTTP_ADDR` to override it. Implemented endpoints are:
@@ -81,6 +110,7 @@ The core process also serves the versioned REST API on `127.0.0.1:8080` by defau
 - `POST /api/v1/runs`, `GET /api/v1/runs`, `GET /api/v1/runs/{id}`, `POST /complete`, and `POST /cancel`
 - `GET /api/v1/analytics/zone-hourly`
 - `GET /api/v1/quality/rejections`
+- `GET /api/v1/operations/kafka-lag`
 - `GET /health/live` and `GET /health/ready`
 
 Dataset registration is idempotent by source type and SHA-256. Creating a run returns it in `RUNNING` state so the replay client can begin immediately. Completing a run requires `expected_input_count` to equal the number of durable per-event outcomes; otherwise the API returns `409 CONFLICT`. Analytics use an inclusive `start`, exclusive `end`, optional pickup-zone filter, and bounded result limits. Dataset and rejection listings use opaque cursors.
@@ -118,5 +148,12 @@ Run the reproducible 100-row end-to-end demonstration:
 ```
 
 The executed verification record, exact versions, commands, and reconciliation results are in [docs/verification/phases-1-4.md](docs/verification/phases-1-4.md).
+
+## Continue in another IDE
+
+The current implementation status, local environment, uncommitted Phase 5
+warning, and detailed Phase 6–8 implementation roadmap are recorded in
+[docs/IMPLEMENTATION_HANDOFF.md](docs/IMPLEMENTATION_HANDOFF.md). Read that file
+before continuing the project in a new IDE or agent session.
 
 

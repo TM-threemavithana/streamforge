@@ -2,6 +2,7 @@ import type {
   AnalyticsResponse,
   ApiProblem,
   DatasetPage,
+  KafkaLagStatus,
   RejectionPage,
   RunPage,
 } from "./types";
@@ -55,4 +56,8 @@ export function getRejections(datasetId: string, cursor: string | null, signal?:
 export function getRuns(datasetId: string, signal?: AbortSignal) {
   const query = new URLSearchParams({ dataset_id: datasetId, limit: "10" });
   return getJSON<RunPage>(`/api/v1/runs?${query}`, signal);
+}
+
+export function getKafkaLag(signal?: AbortSignal) {
+  return getJSON<KafkaLagStatus>("/api/v1/operations/kafka-lag", signal);
 }

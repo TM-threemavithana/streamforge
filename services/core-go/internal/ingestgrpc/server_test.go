@@ -75,3 +75,12 @@ func TestUnexpectedRepositoryErrorsAreSanitized(t *testing.T) {
 		t.Fatalf("unexpected status: %v", err)
 	}
 }
+
+func TestProtocolResultKeepsKafkaAndDatabaseAcknowledgmentsDistinct(t *testing.T) {
+	result := protocolResult(domain.EventResult{
+		EventID: "event", Outcome: domain.OutcomeAccepted, AckStage: "KAFKA_PUBLISHED",
+	})
+	if result.AckStage != ingestv1.AckStage_ACK_STAGE_KAFKA_PUBLISHED {
+		t.Fatalf("ack stage = %s; want KAFKA_PUBLISHED", result.AckStage)
+	}
+}
