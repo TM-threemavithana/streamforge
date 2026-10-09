@@ -1,0 +1,210 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1020 720" width="100%" height="100%" style="background:#0d1117;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#090d16"/>
+    </linearGradient>
+    <linearGradient id="blueCard" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="cyanAccent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="orangeAccent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#eab308"/>
+    </linearGradient>
+    <linearGradient id="greenAccent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="purpleAccent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    
+    <!-- Arrow Marker -->
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#38bdf8"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#f97316"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10b981"/>
+    </marker>
+    <marker id="arrow-purple" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#a855f7"/>
+    </marker>
+    
+    <!-- Filter for subtle drop shadow -->
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="1020" height="720" rx="16" fill="url(#bgGradient)" stroke="#334155" stroke-width="1.5"/>
+
+  <!-- Canvas Header -->
+  <text x="40" y="44" fill="#f8fafc" font-size="20" font-weight="700" letter-spacing="0.5">STREAMFORGE 2.0: DISTRIBUTED SYSTEM ARCHITECTURE</text>
+  <text x="40" y="66" fill="#94a3b8" font-size="12">High-Throughput Polyglot Streaming Pipeline &amp; Real-Time Anomaly Engine</text>
+
+  <!-- ================= TIER 1: INGESTION TIER ================= -->
+  <g transform="translate(40, 95)" filter="url(#shadow)">
+    <!-- Group Container -->
+    <rect width="210" height="180" rx="12" fill="url(#blueCard)" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="none"/>
+    <rect width="210" height="28" rx="12" fill="#1e3a8a" opacity="0.6"/>
+    <text x="14" y="19" fill="#93c5fd" font-size="11" font-weight="700">1. INGESTION TIER (Python)</text>
+    
+    <!-- Parquet File Box -->
+    <rect x="15" y="40" width="180" height="48" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+    <circle cx="28" cy="58" r="5" fill="#f59e0b"/>
+    <text x="40" y="56" fill="#f1f5f9" font-size="12" font-weight="600">NYC TLC Parquet</text>
+    <text x="40" y="74" fill="#64748b" font-size="10">2.96M rows / SIMD PyArrow</text>
+    
+    <!-- Replay CLI Box -->
+    <rect x="15" y="105" width="180" height="58" rx="6" fill="#0f172a" stroke="#0284c7" stroke-width="1.2"/>
+    <circle cx="28" cy="125" r="5" fill="#38bdf8"/>
+    <text x="40" y="123" fill="#38bdf8" font-size="12" font-weight="600">Replay CLI / Adapter</text>
+    <text x="40" y="139" fill="#94a3b8" font-size="10">Deterministic SHA-256 IDs</text>
+    <text x="40" y="152" fill="#64748b" font-size="9">gRPC Client (1..500 batch)</text>
+  </g>
+
+  <!-- Arrow 1: Ingestion to Core Ingestion -->
+  <path d="M 250 220 L 305 220" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" marker-end="url(#arrow)"/>
+  <text x="254" y="210" fill="#38bdf8" font-size="9" font-weight="600">gRPC :50051</text>
+
+  <!-- ================= TIER 2: CORE INGESTION GATEKEEPER ================= -->
+  <g transform="translate(315, 95)" filter="url(#shadow)">
+    <rect width="210" height="250" rx="12" fill="url(#blueCard)" stroke="#06b6d4" stroke-width="1.5"/>
+    <rect width="210" height="28" rx="12" fill="#0e7490" opacity="0.4"/>
+    <text x="14" y="19" fill="#67e8f9" font-size="11" font-weight="700">2. CORE GATEKEEPER (Go 1.24)</text>
+
+    <!-- gRPC & Produce Box -->
+    <rect x="15" y="42" width="180" height="60" rx="6" fill="#0f172a" stroke="#0891b2" stroke-width="1"/>
+    <text x="25" y="60" fill="#e2e8f0" font-size="12" font-weight="600">Ingestion Server</text>
+    <text x="25" y="76" fill="#94a3b8" font-size="10">- Protobuf Max 4 MiB</text>
+    <text x="25" y="90" fill="#06b6d4" font-size="10">- Pipelined franz-go Batch</text>
+
+    <!-- REST API Box -->
+    <rect x="15" y="115" width="180" height="60" rx="6" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="133" fill="#e2e8f0" font-size="12" font-weight="600">REST API Engine (:8080)</text>
+    <text x="25" y="149" fill="#94a3b8" font-size="10">Datasets, Runs &amp; Analytics</text>
+    <text x="25" y="163" fill="#64748b" font-size="9">GET /api/v1/analytics/*</text>
+
+    <!-- Metrics Box -->
+    <rect x="15" y="188" width="180" height="46" rx="6" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="206" fill="#e2e8f0" font-size="11" font-weight="600">Prometheus Telemetry</text>
+    <text x="25" y="222" fill="#10b981" font-size="10">GET /metrics (Lag, Goroutines)</text>
+  </g>
+
+  <!-- Arrow 2: Core to Kafka Broker -->
+  <path d="M 525 155 L 585 155" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" marker-end="url(#arrow-orange)"/>
+  <text x="530" y="145" fill="#f97316" font-size="9" font-weight="700">9,792 eps</text>
+
+  <!-- ================= TIER 3: EVENT BROKER ================= -->
+  <g transform="translate(595, 95)" filter="url(#shadow)">
+    <rect width="180" height="250" rx="12" fill="url(#blueCard)" stroke="#f97316" stroke-width="1.8"/>
+    <rect width="180" height="28" rx="12" fill="#c2410c" opacity="0.3"/>
+    <text x="14" y="19" fill="#fdba74" font-size="11" font-weight="700">3. BROKER (Apache Kafka)</text>
+
+    <!-- Topic Info -->
+    <rect x="15" y="45" width="150" height="75" rx="6" fill="#0f172a" stroke="#ea580c" stroke-width="1"/>
+    <text x="25" y="65" fill="#ffedd5" font-size="11" font-weight="700">Topic: raw-events.v1</text>
+    <text x="25" y="81" fill="#fdba74" font-size="10">- 6 Partitions (KRaft)</text>
+    <text x="25" y="96" fill="#94a3b8" font-size="9">- Key: SHA-256 event_id</text>
+    <text x="25" y="109" fill="#94a3b8" font-size="9">- 7-Day Local Retention</text>
+
+    <!-- Ports -->
+    <rect x="15" y="135" width="150" height="42" rx="6" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="152" fill="#cbd5e1" font-size="10" font-weight="600">Port :9092 (Internal)</text>
+    <text x="25" y="167" fill="#64748b" font-size="9">Port :29092 (Host / Replay)</text>
+
+    <!-- Guarantees -->
+    <rect x="15" y="188" width="150" height="46" rx="6" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="206" fill="#38bdf8" font-size="10" font-weight="600">At-Least-Once Delivery</text>
+    <text x="25" y="222" fill="#64748b" font-size="9">Manual Offset Commit</text>
+  </g>
+
+  <!-- ================= TIER 4: PROCESSING WORKERS ================= -->
+  <!-- Arrow 3A: Kafka to Go Analytics Consumer -->
+  <path d="M 775 160 L 825 160" stroke="#06b6d4" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="780" y="150" fill="#06b6d4" font-size="9" font-weight="600">Pull :v1</text>
+
+  <!-- Worker 1: Go Analytics Worker -->
+  <g transform="translate(835, 95)" filter="url(#shadow)">
+    <rect width="150" height="115" rx="10" fill="url(#blueCard)" stroke="#06b6d4" stroke-width="1.4"/>
+    <rect width="150" height="24" rx="10" fill="#0e7490" opacity="0.4"/>
+    <text x="10" y="17" fill="#67e8f9" font-size="10" font-weight="700">4A. ANALYTICS (Go)</text>
+
+    <text x="14" y="44" fill="#e2e8f0" font-size="11" font-weight="600">Analytics Consumer</text>
+    <text x="14" y="60" fill="#94a3b8" font-size="9">Group: streamforge-v1</text>
+    <text x="14" y="76" fill="#94a3b8" font-size="9">Idempotent Deduplication</text>
+    <text x="14" y="94" fill="#06b6d4" font-size="9">Fixed-Point Aggregates</text>
+  </g>
+
+  <!-- Arrow 3B: Kafka to Java Alerts Consumer -->
+  <path d="M 775 270 L 825 270" stroke="#10b981" stroke-width="2" marker-end="url(#arrow-green)"/>
+  <text x="780" y="260" fill="#10b981" font-size="9" font-weight="600">Pull :v1</text>
+
+  <!-- Worker 2: Java Spring Boot Alerts Engine -->
+  <g transform="translate(835, 230)" filter="url(#shadow)">
+    <rect width="150" height="115" rx="10" fill="url(#blueCard)" stroke="#10b981" stroke-width="1.4"/>
+    <rect width="150" height="24" rx="10" fill="#065f46" opacity="0.4"/>
+    <text x="10" y="17" fill="#a7f3d0" font-size="10" font-weight="700">4B. ALERTS (Java 17)</text>
+
+    <text x="14" y="44" fill="#e2e8f0" font-size="11" font-weight="600">Spring Boot 4.1</text>
+    <text x="14" y="60" fill="#94a3b8" font-size="9">Rules Engine (CEP)</text>
+    <text x="14" y="76" fill="#10b981" font-size="9">Deterministic alert_id</text>
+    <text x="14" y="94" fill="#94a3b8" font-size="9">REST API (:8081)</text>
+  </g>
+
+  <!-- ================= TIER 5: DATA PERSISTENCE TIER ================= -->
+  <!-- Container Background for Storage -->
+  <rect x="40" y="380" width="945" height="175" rx="12" fill="#090d16" stroke="#1e293b" stroke-width="1.5"/>
+  <rect x="40" y="380" width="945" height="26" rx="12" fill="#1e293b" opacity="0.6"/>
+  <text x="56" y="398" fill="#cbd5e1" font-size="11" font-weight="700">5. PERSISTENCE TIER: POSTGRESQL 16 (PHYSICALLY SEGREGATED DATABASES)</text>
+
+  <!-- Core DB Box -->
+  <g transform="translate(60, 420)">
+    <rect width="430" height="115" rx="8" fill="#0f172a" stroke="#3b82f6" stroke-width="1.2"/>
+    <text x="16" y="24" fill="#93c5fd" font-size="12" font-weight="700">Database: streamforge (Owner: streamforge_user)</text>
+    <text x="16" y="45" fill="#94a3b8" font-size="10">• datasets &amp; replay_runs (Ingestion run metadata &amp; state machine)</text>
+    <text x="16" y="63" fill="#94a3b8" font-size="10">• trip_events (Idempotency boundary: ON CONFLICT DO NOTHING)</text>
+    <text x="16" y="81" fill="#94a3b8" font-size="10">• run_event_outcomes (Audit log: ACCEPTED, REJECTED, DUPLICATE)</text>
+    <text x="16" y="99" fill="#38bdf8" font-size="10">• hourly_zone_stats (Commutative integer additive counters)</text>
+  </g>
+
+  <!-- Alerts DB Box -->
+  <g transform="translate(535, 420)">
+    <rect width="430" height="115" rx="8" fill="#0f172a" stroke="#a855f7" stroke-width="1.2"/>
+    <text x="16" y="24" fill="#d8b4fe" font-size="12" font-weight="700">Database: streamforge_alerts (Owner: streamforge_alerts_user)</text>
+    <text x="16" y="45" fill="#94a3b8" font-size="10">• alert_rules (Dynamic thresholds: FARE &gt; $100, MILES &gt; 50)</text>
+    <text x="16" y="63" fill="#94a3b8" font-size="10">• alerts (Deterministic alert_id deduplication)</text>
+    <text x="16" y="81" fill="#94a3b8" font-size="10">• alert_event_outcomes (Transactional offset commit tracking)</text>
+    <text x="16" y="99" fill="#c084fc" font-size="10">• alert_consumer_failures (Dead-Letter Queue isolation)</text>
+  </g>
+
+  <!-- Arrows from Workers down to DBs -->
+  <!-- Go Analytics to Core DB -->
+  <path d="M 910 210 L 910 365 L 350 365 L 350 420" stroke="#3b82f6" stroke-width="1.8" stroke-dasharray="4,4" fill="none" marker-end="url(#arrow)"/>
+  <!-- Java Alerts to Alerts DB -->
+  <path d="M 910 345 L 910 375 L 750 375 L 750 420" stroke="#a855f7" stroke-width="1.8" stroke-dasharray="4,4" fill="none" marker-end="url(#arrow-purple)"/>
+
+  <!-- ================= TIER 6: PRESENTATION TIER ================= -->
+  <g transform="translate(40, 580)" filter="url(#shadow)">
+    <rect width="945" height="105" rx="12" fill="url(#blueCard)" stroke="#38bdf8" stroke-width="1.4"/>
+    <rect width="945" height="26" rx="12" fill="#0369a1" opacity="0.4"/>
+    <text x="18" y="18" fill="#7dd3fc" font-size="11" font-weight="700">6. PRESENTATION TIER: OPERATIONAL DASHBOARD (React 19 / TypeScript / Vite)</text>
+
+    <!-- Dashboard Content -->
+    <text x="24" y="48" fill="#f8fafc" font-size="13" font-weight="600">StreamForge Web Dashboard (:8080 / :4173)</text>
+    <text x="24" y="68" fill="#94a3b8" font-size="11">Real-Time Operational Monitoring • Live Zone Statistics Heatmap • Broker Partition Lag • Dynamic Anomaly Feeds</text>
+    <text x="24" y="88" fill="#38bdf8" font-size="10">Built-in Nginx Reverse Proxy: /api/* → Core Go (:8080)   |   /api/v1/alerts-service/* → Java Alerts (:8081)</text>
+  </g>
+
+</svg>

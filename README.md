@@ -20,73 +20,48 @@ It couples vectorized C++ SIMD Parquet scanning with low-latency Go event ingest
 
 ## 1. System Architecture
 
-```mermaid
-flowchart TD
-    subgraph IngestionTier["Ingestion Tier (Python / PyArrow)"]
-        Parquet["NYC TLC Yellow Taxi Parquet\n(data/yellow_tripdata_2024-01.parquet)"] --> Normalizer["Bounded Adapter\nFixed-Point Normalization"]
-        Normalizer --> ReplayCLI["gRPC Client / Replay CLI\n(Bounded Batches: 1..500)"]
-    end
+![StreamForge 2.0 System Architecture](docs/architecture/system-architecture.svg)
 
-    subgraph CoreService["Core Ingestion Tier (Go 1.24)"]
-        gRPCServer["gRPC Gatekeeper :50051\n(Max 4 MiB Protobuf Frames)"]
-        RESTServer["REST API Server :8080\nDatasets / Runs / Analytics"]
-        MetricsEndpoint["Prometheus Metrics\nGET /metrics"]
-    end
+### End-to-End Streaming Pipeline Flow
 
-    subgraph MessagingTier["Event Broker Tier (Apache Kafka 3.8 / KRaft)"]
-        RawEventsTopic["streamforge.raw-events.v1\n(6 Partitions / Key: deterministic event_id)"]
-    end
-
-    subgraph AnalyticsWorkerTier["Analytics Stream Processing (Go 1.24)"]
-        AnalyticsConsumer["Analytics Consumer\nGroup: streamforge-analytics-v1"]
-    end
-
-    subgraph AlertsWorkerTier["Anomaly Rules Engine (Java 17 / Spring Boot 4)"]
-        AlertsConsumer["Alerts Consumer\nGroup: streamforge-alerts-v1"]
-        RulesEngine["Stateful Rules Engine\nHIGH_FARE, LONG_DISTANCE, UNUSUAL_DURATION"]
-        AlertsAPI["Alerts REST API :8081\nRules & Alerts Management"]
-    end
-
-    subgraph StorageTier["Data Persistence Tier (PostgreSQL 16)"]
-        subgraph CoreDB["Database: streamforge (Owner: streamforge_user)"]
-            DatasetsTable["datasets"]
-            RunsTable["replay_runs"]
-            TripsTable["trip_events"]
-            OutcomesTable["run_event_outcomes"]
-            HourlyStatsTable["hourly_zone_stats"]
-        end
-
-        subgraph AlertsDB["Database: streamforge_alerts (Owner: streamforge_alerts_user)"]
-            AlertRulesTable["alert_rules"]
-            AlertsTable["alerts"]
-            AlertOutcomesTable["alert_event_outcomes"]
-            ConsumerFailuresTable["alert_consumer_failures"]
-        end
-    end
-
-    subgraph PresentationTier["Operational Dashboard (React 19 / TypeScript / Vite)"]
-        Dashboard["StreamForge Dashboard :8080\n(Reverse Proxy to Core :8080 & Alerts :8081)"]
-    end
-
-    ReplayCLI -->|Protobuf over gRPC| gRPCServer
-    gRPCServer -->|Pipelined Batch Produce| RawEventsTopic
-    gRPCServer -->|Catalog State| RunsTable
-
-    RawEventsTopic -->|At-Least-Once Pull| AnalyticsConsumer
-    AnalyticsConsumer -->|Atomic Upsert| HourlyStatsTable
-    AnalyticsConsumer -->|Idempotent Log| OutcomesTable
-
-    RawEventsTopic -->|At-Least-Once Pull| AlertsConsumer
-    AlertsConsumer --> RulesEngine
-    RulesEngine -->|Deterministic Alert ID| AlertsTable
-    AlertsConsumer -->|Manual Offset Commit| AlertOutcomesTable
-
-    RESTServer --> CoreDB
-    AlertsAPI --> AlertsDB
-
-    Dashboard -->|/api/*| RESTServer
-    Dashboard -->|/api/v1/alerts-service/*| AlertsAPI
+```text
+┌─────────────────────────┐       gRPC :50051       ┌────────────────────────┐    franz-go Batch     ┌────────────────────────┐
+│  Python Replay Client   │ ──────────────────────> │  Go Ingestion Gateway  │ ────────────────────> │    Apache Kafka 3.8    │
+│  (SIMD PyArrow Adapter) │                         │  (gRPC & REST :8080)   │      (9,792 eps)      │  (raw-events.v1 / 6 P) │
+└─────────────────────────┘                         └────────────────────────┘                       └───────────┬────────────┘
+                                                                                                                 │
+                                                            ┌────────────────────────────────────────────────────┴────────────────┐
+                                                            ▼                                                                     ▼
+                                               ┌────────────────────────┐                                            ┌────────────────────────┐
+                                               │ Go Analytics Consumer  │                                            │ Java Alerts Engine     │
+                                               │ (Group: analytics-v1)  │                                            │ (Spring Boot 4 / :8081)│
+                                               └───────────┬────────────┘                                            └───────────┬────────────┘
+                                                           │                                                                     │
+                                                           ▼                                                                     ▼
+                                               ┌────────────────────────┐                                            ┌────────────────────────┐
+                                               │ PostgreSQL: streamforge│                                            │ PostgreSQL:            │
+                                               │ (Trips & Zone Hourly)  │                                            │ streamforge_alerts     │
+                                               └────────────────────────┘                                            └────────────────────────┘
 ```
+
+<details>
+<summary><b>View Mermaid Architecture Code</b></summary>
+
+```mermaid
+flowchart LR
+    Parquet["NYC TLC Parquet"] --> ReplayCLI["Replay CLI (Python)"]
+    ReplayCLI -->|gRPC :50051| GoCore["Core Ingestion (Go)"]
+    GoCore -->|Batch Produce| Kafka["Kafka Broker (6 Partitions)"]
+    Kafka -->|Pull| GoAnalytics["Analytics Consumer (Go)"]
+    Kafka -->|Pull| JavaAlerts["Alerts Engine (Java 17)"]
+    GoAnalytics -->|Atomic Upsert| CoreDB[("PostgreSQL: streamforge")]
+    JavaAlerts -->|Deterministic Alert| AlertsDB[("PostgreSQL: streamforge_alerts")]
+    CoreDB --> GoCore
+    AlertsDB --> JavaAlerts
+    GoCore --> Dashboard["Dashboard (React 19)"]
+    JavaAlerts --> Dashboard
+```
+</details>
 
 ---
 
